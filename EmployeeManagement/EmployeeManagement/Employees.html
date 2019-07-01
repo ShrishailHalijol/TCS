@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Employees</title>
+    <link href="Content/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <div style="padding-top:20px">
+        <table class="table table-bordered" id="tblNew">
+            <thead>
+                <tr class="success">
+                    <th>Add New Employee</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th>
+                        <input type="button" id="btnLogout" value="Log out" class="btn btn-success" />
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="tblNewBody">
+                <tr>
+                    <td><input type="text" id="txtFirstName" placeholder="First Name" /></td>
+                    <td><input type="text" id="txtLastName" placeholder="Last Name" /></td>
+                    <td><input type="text" id="txtDesignation" placeholder="Designation" /></td>
+                    <td><input type="text" id="txtLocation" placeholder="Location" /></td>
+                    <td><input type="button" id="btnAdd" class="btn btn-success" value="Add" /></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="padding-top:20px">
+
+        <div class="well hidden" style="margin-top:10px" id="divData">
+            <table class="table table-bordered" id="tblData">
+                <thead>
+                    <tr class="success">
+                        <th>Id</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Designation</th>
+                        <th>Location</th>
+                        <th>Delete</th>
+                    </tr>
+                </thead>
+                <tbody id="tblBody"></tbody>
+            </table>
+            <div class="modal fade" tabindex="-1" id="errorModal" data-keyboard="false" data-backdrop="static">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">
+                                &times;
+                            </button>
+                            <h5>Session Expired</h5>
+                        </div>
+                        <div class="modal-body">
+                            <h4>Session expired, please login again</h4>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-success" data-dismiss="modal">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="divError" class="alert alert-danger collapse">
+                <a id="linkClose" class="close" href="#">&times;</a>
+                <div id="divErrorMessage"></div>
+            </div>
+        </div>
+
+        <script src="Scripts/jquery-3.3.1.min.js"></script>
+        <script src="Scripts/bootstrap.min.js"></script>
+        <script type="text/javascript">
+            $(document).ready(() => {
+
+                if (sessionStorage.getItem('accessToken') == null) {
+                    window.Location.href = 'Login.html';
+                }
+                else {
+                    console.log('Valid Credentials');
+                }
+
+                //$('#btnDisplayEmployees').click(() => {
+                getEmployees();
+                //});
+
+
+                $('#btnAdd').click(() => {
+                    postEmployee();
+                });
+
+
+                $('#btnLogout').click(() => {
+                    logOut();
+                });
+
+
+                $('#linkClose').click(() => {
+                    $('#divError').hide('fade');
+                });
+            });
+
+            function btnDeleteClick(obj) {
+                    deleteEmployee(obj, $(obj).closest('tr').find('td:first').html());
+            };
+
+
+            function rowSelected(obj) {
+                console.log('row selected');
+                console.log(obj);
+            };
+
+
+            function getEmployees() {
+                if (sessionStorage.getItem('accessToken') === null) {
+                    window.location.href('Login.html');
+                }
+
+                $.ajax({
+                    url: 'api/employees',
+                    method: 'GET',
+                    contentType: 'application/json',
+                    headers: {
+                        'Authorization': 'Bearer ' + sessionStorage.getItem('accessToken')
+                    },
+                    success: (data) => {
+                        $('#divData').removeClass('hidden');
+                        $('#tblBody').empty();
+                        $.each(data, (index, value) => {
+                            var row = $('<tr onclick="rowSelected(this)"><td id="value">' + value.Id + '</td><td id="firstName">'
+                                + value.FirstName + '</td><td id="lastName">'
+                                + value.LastName + '</td><td id="designation">'
+                                + value.Designation + '</td><td id="location">'
+                                + value.Location + '</td><td>'
+                                + '<input type="button" id="btnDelete" onclick="btnDeleteClick(this)" value="X" class="btn btn-remove btn-danger" />' + '</td></tr>');
+
+                            $('#tblData').append(row);
+                        });
+                    },
+                    error: (jqXHR) => {
+                        $('#divErrorMessage').text(jqXHR.responseText);
+                        $('#divError').show('show');
+                    }
+                });
+            };
+
+
+            function postEmployee() {
+                var employee = {
+                    FirstName: $('#txtFirstName').val(),
+                    LastName: $('#txtLastName').val(),
+                    Designation: $('#txtDesignation').val(),
+                    Location: $('#txtLocation').val(),
+                };
+
+                $.ajax({
+                    url: 'api/employees',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    headers: {
+                        'Authorization': 'Bearer ' + sessionStorage.getItem('accessToken')
+                    },
+                    data: JSON.stringify(employee),
+                    success: (response) => {
+                        var row = $('<tr><td>' + response.Id + '</td><td>'
+                            + response.FirstName + '</td><td>'
+                            + response.LastName + '</td><td>'
+                            + response.Designation + '</td><td>'
+                            + response.Location + '</td><td>'
+                            + '<input type="button" id="btnDelete" value="X" class="btn btn-remove btn-danger" />' + '</td></tr>');
+
+                        $('#tblData').append(row);
+                    },
+                    error: (jqXHR) => {
+                        $('#divErrorMessage').text(jqXHR.responseText);
+                        $('#divError').show('show');
+                    }
+                });
+            };
+
+
+            function deleteEmployee(obj, id) {
+                $.ajax({
+                    url: 'api/employees/' + id,
+                    method: 'DELETE',
+                    contentType: 'application/json',
+                    headers: {
+                        'Authorization': 'Bearer ' + sessionStorage.getItem('accessToken')
+                    },
+                    success: (response) => {
+                        $(obj).closest('tr').remove();
+                    },
+                    error: (jqXHR) => {
+                        $('#divErrorMessage').text(jqXHR.responseText);
+                        $('#divError').show('show');
+                    }
+                });
+            };
+
+
+            function logOut() {
+                sessionStorage.removeItem('accessToken');
+                window.location.href('Login.html');
+            };
+
+        </script>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
